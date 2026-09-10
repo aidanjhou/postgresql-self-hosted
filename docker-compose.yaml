@@ -13,23 +13,17 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     configs:
-      - source: init_sh
-        target: /docker-entrypoint-initdb.d/init.sh
+      - source: vector_control
+        target: /usr/share/postgresql/17/extension/vector.control
 
 configs:
-  init_sh:
+  vector_control:
     content: |
-      #!/bin/bash
-      set -e
-
-      # 批量将 vector 和 pg_trgm 标记为受信任扩展 (trusted = true)
-      # 允许非超级用户在自己拥有的数据库中自主安装，无权限阻碍
-      for ext in vector pg_trgm; do
-        CONTROL_FILE=$(find /usr -name "${ext}.control" 2>/dev/null | head -n 1)
-        if [ -n "$CONTROL_FILE" ] && ! grep -q "^trusted" "$CONTROL_FILE"; then
-          echo "trusted = true" >> "$CONTROL_FILE"
-        fi
-      done
+      comment = 'vector data type and ivfflat and hnsw access methods'
+      default_version = '0.8.6'
+      module_pathname = '$$libdir/vector'
+      relocatable = true
+      trusted = true
 
 volumes:
   pg_data:
