@@ -13,17 +13,23 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     configs:
-      - source: init_sql
-        target: /docker-entrypoint-initdb.d/init.sql
+      - source: init_sh
+        target: /docker-entrypoint-initdb.d/init.sh
 
 configs:
-  init_sql:
+  init_sh:
     content: |
-      -- 给当前默认库启用扩展
-      CREATE EXTENSION IF NOT EXISTS vector;
-      -- 给模板库启用扩展，此后所有新建的库天然自带 vector
-      \c template1
-      CREATE EXTENSION IF NOT EXISTS vector;
+      #!/bin/bash
+      set -e
+
+      # 批量将 vector 和 pg_trgm 标记为受信任扩展 (trusted = true)
+      # 允许非超级用户在自己拥有的数据库中自主安装，无权限阻碍
+      for ext in vector pg_trgm; do
+        CONTROL_FILE=$(find /usr -name "${ext}.control" 2>/dev/null | head -n 1)
+        if [ -n "$CONTROL_FILE" ] && ! grep -q "^trusted" "$CONTROL_FILE"; then
+          echo "trusted = true" >> "$CONTROL_FILE"
+        fi
+      done
 
 volumes:
   pg_data:
